@@ -1,110 +1,137 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useState } from "react";
+import { Pressable, ScrollView, StyleSheet, TextInput } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { Colors } from "@/constants/Colors";
+import { useColorScheme } from "@/hooks/useColorScheme";
 
-export default function TabTwoScreen() {
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+export default function ExploreScreen() {
+  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const [description, setDescription] = useState("");
+  const [technologies, setTechnologies] = useState("");
+
+  const textInputStyle = {
+    borderColor: Colors[colorScheme ?? "light"].icon,
+    color: Colors[colorScheme ?? "light"].text,
+    backgroundColor: Colors[colorScheme ?? "light"].background,
+  };
+
+  const buttonStyle = {
+    backgroundColor: Colors[colorScheme ?? "light"].tint,
+  };
+
+  const scale = useSharedValue(1);
+
+  const animatedButtonStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+    };
+  });
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image source={require('@/assets/images/react-logo.png')} style={{ alignSelf: 'center' }} />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
-          </ThemedText>
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
+    <ThemedView style={[styles.pageContainer, { paddingTop: insets.top }]}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <ThemedView style={styles.container}>
+          <ThemedView style={styles.inputContainer}>
+            <ThemedText style={styles.label}>Project description</ThemedText>
+            <TextInput
+              style={[styles.textInput, styles.largeTextInput, textInputStyle]}
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Describe your project here..."
+              placeholderTextColor={Colors[colorScheme ?? "light"].icon}
+              multiline
+              textAlignVertical="top"
+            />
+          </ThemedView>
+
+          <ThemedView style={styles.inputContainer}>
+            <ThemedText style={styles.label}>
+              (optional) technologies you want to use
             </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+            <TextInput
+              style={[styles.textInput, textInputStyle]}
+              value={technologies}
+              onChangeText={setTechnologies}
+              placeholder="e.g., React, Firebase, etc."
+              placeholderTextColor={Colors[colorScheme ?? "light"].icon}
+            />
+          </ThemedView>
+        </ThemedView>
+      </ScrollView>
+      <AnimatedPressable
+        style={[
+          styles.button,
+          buttonStyle,
+          { bottom: insets.bottom + 20 },
+          animatedButtonStyle,
+        ]}
+        onPressIn={() => (scale.value = withSpring(0.95))}
+        onPressOut={() => (scale.value = withSpring(1))}
+        onHoverIn={() => (scale.value = withSpring(1.05))}
+        onHoverOut={() => (scale.value = withSpring(1))}
+      >
+        <ThemedText style={styles.buttonText}>Submit</ThemedText>
+      </AnimatedPressable>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  pageContainer: {
+    flex: 1,
   },
-  titleContainer: {
-    flexDirection: 'row',
+  scrollContainer: {
+    flexGrow: 1,
+    padding: 16,
+    // Add padding to the bottom to ensure the last input is not hidden by the floating button
+    paddingBottom: 120,
+  },
+  container: {
+    // Padding is now in scrollContainer to handle the alignment correctly.
+    gap: 16,
+  },
+  inputContainer: {
     gap: 8,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  textInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+  },
+  largeTextInput: {
+    height: 200,
+    paddingTop: 12,
+  },
+  button: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 4, // Shadow for Android
+  },
+  buttonText: {
+    color: "black",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
