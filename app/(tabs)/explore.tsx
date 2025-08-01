@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     elevation: 4, // Shadow for Android
   },
   buttonText: {
-    color: "black",
+    color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
   },
