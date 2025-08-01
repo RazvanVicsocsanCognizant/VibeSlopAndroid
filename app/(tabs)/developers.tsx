@@ -1,6 +1,12 @@
 import { Image } from "expo-image";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { FlatList, Pressable, StyleSheet, View } from "react-native";
+import {
+  FlatList,
+  Pressable,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -19,27 +25,27 @@ function DeveloperCard({ developer }: { developer: Developer }) {
     <Pressable style={[styles.card, { backgroundColor: cardBackgroundColor }]}>
       <Image source={{ uri: developer.photo }} style={styles.photo} />
       <View style={styles.infoContainer}>
-        <ThemedText type="subtitle" style={styles.nameText} numberOfLines={1}>
-          {developer.name}
+        <ThemedText type="subtitle" style={styles.nameText}>
+          Name: {developer.name}
         </ThemedText>
-        <ThemedText style={styles.locationText} numberOfLines={1}>
-          {developer.location}
+        <ThemedText style={styles.locationText}>
+          Location: {developer.location}
         </ThemedText>
         <ThemedText style={styles.experienceText}>
-          {developer.yearsOfExperience} yrs
+          Experience: {developer.yearsOfExperience} yrs
         </ThemedText>
-        <ThemedText style={styles.techStackText} numberOfLines={2}>
-          {developer.techStack.join(", ")}
+        <ThemedText style={styles.techStackText}>
+          Tech Stack: {developer.techStack.join(", ")}
         </ThemedText>
         {!!developer.project && (
-          <ThemedText style={styles.projectText} numberOfLines={1}>
-            On: {developer.project}
+          <ThemedText style={styles.projectText}>
+            Project: {developer.project}
           </ThemedText>
         )}
         <ThemedText
           style={[styles.availabilityText, { color: availabilityColor }]}
         >
-          {developer.available}
+          Available: {developer.available}
         </ThemedText>
       </View>
     </Pressable>
@@ -48,6 +54,7 @@ function DeveloperCard({ developer }: { developer: Developer }) {
 
 export default function DeveloperListScreen() {
   const params = useLocalSearchParams();
+  const { width } = useWindowDimensions();
   const developersString = params.developers as string;
   let developers: Developer[] = [];
 
@@ -58,6 +65,8 @@ export default function DeveloperListScreen() {
   } catch (e) {
     console.error("Failed to parse developers from params:", e);
   }
+
+  const numColumns = width > 768 ? 3 : 1;
 
   if (!developers.length) {
     return (
@@ -74,11 +83,10 @@ export default function DeveloperListScreen() {
       <FlatList
         data={developers}
         keyExtractor={(item) => item.id}
-        numColumns={3}
-        key={3} // Important for re-rendering on numColumns change
+        numColumns={numColumns}
+        key={numColumns}
         renderItem={({ item }) => <DeveloperCard developer={item} />}
         contentContainerStyle={styles.listContentContainer}
-        columnWrapperStyle={styles.columnWrapper}
       />
     </View>
   );
@@ -97,14 +105,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 16,
   },
-  columnWrapper: {
-    gap: 8,
-    marginBottom: 16,
-  },
   card: {
-    flex: 1, // Each card takes up half the width
-    alignItems: "center",
-    margin: 4,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginVertical: 8,
+    marginHorizontal: 8,
     padding: 12,
     borderRadius: 12,
     elevation: 3,
@@ -112,53 +118,40 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    minHeight: 220,
-    justifyContent: "flex-start",
   },
   photo: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    marginBottom: 12,
+    marginRight: 12,
   },
   infoContainer: {
     flex: 1,
-    alignItems: "center",
-    gap: 4,
-    width: "100%",
+    gap: 2,
   },
   nameText: {
-    fontSize: 14,
-    textAlign: "center",
+    fontSize: 16,
     fontWeight: "600",
   },
   locationText: {
-    fontSize: 12,
+    fontSize: 14,
     opacity: 0.7,
-    textAlign: "center",
   },
   experienceText: {
     fontSize: 12,
     fontStyle: "italic",
   },
   techStackText: {
-    fontSize: 11,
-    textAlign: "center",
+    fontSize: 12,
     opacity: 0.8,
-    marginTop: 4,
   },
   projectText: {
-    fontSize: 11,
+    fontSize: 12,
     fontStyle: "italic",
     opacity: 0.6,
-    textAlign: "center",
-    marginTop: 4,
   },
   availabilityText: {
     fontSize: 12,
     fontWeight: "bold",
-    textAlign: "center",
-    marginTop: "auto",
-    paddingTop: 8,
   },
 });
