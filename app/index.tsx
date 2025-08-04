@@ -5,7 +5,7 @@ import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
-import { StyleSheet, TextInput } from "react-native";
+import { StyleSheet, TextInput, View, Pressable } from "react-native";
 
 // Mock authentication function. Replace this with your actual API call.
 const mockLoginApi = (user: string, pass: string) => {
@@ -20,12 +20,26 @@ const mockLoginApi = (user: string, pass: string) => {
   });
 };
 
+const mockDeveloperLoginApi = (developerId: string) => {
+  return new Promise<void>((resolve, reject) => {
+    setTimeout(() => {
+      if (developerId.match(/^\d{7}$/)) {
+        resolve();
+      } else {
+        reject(new Error("Invalid Developer ID"));
+      }
+    }, 1000);
+  });
+};
+
 export default function LoginScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const passwordInputRef = useRef<TextInput>(null);
+  const [loginMode, setLoginMode] = useState<"user" | "developer">("user");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [developerId, setDeveloperId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,8 +49,21 @@ export default function LoginScreen() {
     setError(null);
     try {
       await mockLoginApi(username, password);
-      // On successful login, navigate to the home screen within the tabs layout
       router.replace("/(tabs)/home");
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeveloperLogin = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      await mockDeveloperLoginApi(developerId);
+      router.push("/evaluation");
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -46,12 +73,11 @@ export default function LoginScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      // Reset form state every time the screen comes into focus
       setUsername("");
       setPassword("");
+      setDeveloperId("");
       setError(null);
       setIsLoading(false);
-      passwordInputRef.current?.clear();
     }, [])
   );
 
@@ -65,33 +91,76 @@ export default function LoginScreen() {
       <ThemedText type="title" style={styles.title}>
         Welcome Back
       </ThemedText>
-      <TextInput
-        style={[styles.input, textInputStyle]}
-        placeholder="Username"
-        placeholderTextColor={Colors[colorScheme ?? "light"].icon}
-        value={username}
-        onChangeText={setUsername}
-        autoCapitalize="none"
-        editable={!isLoading}
-        returnKeyType="next"
-        onSubmitEditing={() => passwordInputRef.current?.focus()}
-      />
-      <TextInput
-        style={[styles.input, textInputStyle]}
-        placeholder="Password"
-        placeholderTextColor={Colors[colorScheme ?? "light"].icon}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        editable={!isLoading}
-        ref={passwordInputRef}
-        returnKeyType="done"
-        onSubmitEditing={handleLogin}
-      />
+      <View style={styles.toggleContainer}>
+        <Pressable
+          style={[
+            styles.toggleButton,
+            loginMode === "user" && styles.activeToggleButton,
+          ]}
+          onPress={() => setLoginMode("user")}
+        >
+          <ThemedText>User</ThemedText>
+        </Pressable>
+        <Pressable
+          style={[
+            styles.toggleButton,
+            loginMode === "developer" && styles.activeToggleButton,
+          ]}
+          onPress={() => setLoginMode("developer")}
+        >
+          <ThemedText>Developer</ThemedText>
+        </Pressable>
+      </View>
+
+      {loginMode === "user" ? (
+        <>
+          <TextInput
+            style={[styles.input, textInputStyle]}
+            placeholder="Username"
+            placeholderTextColor={Colors[colorScheme ?? "light"].icon}
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+            editable={!isLoading}
+            returnKeyType="next"
+            onSubmitEditing={() => passwordInputRef.current?.focus()}
+          />
+          <TextInput
+            style={[styles.input, textInputStyle]}
+            placeholder="Password"
+            placeholderTextColor={Colors[colorScheme ?? "light"].icon}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            editable={!isLoading}
+            ref={passwordInputRef}
+            returnKeyType="done"
+            onSubmitEditing={handleLogin}
+          />
+          <Button onPress={handleLogin} loading={isLoading}>
+            Login
+          </Button>
+        </>
+      ) : (
+        <>
+          <TextInput
+            style={[styles.input, textInputStyle]}
+            placeholder="7-Digit Developer ID"
+            placeholderTextColor={Colors[colorScheme ?? "light"].icon}
+            value={developerId}
+            onChangeText={setDeveloperId}
+            keyboardType="numeric"
+            maxLength={7}
+            editable={!isLoading}
+            returnKeyType="done"
+            onSubmitEditing={handleDeveloperLogin}
+          />
+          <Button onPress={handleDeveloperLogin} loading={isLoading}>
+            Login as Developer
+          </Button>
+        </>
+      )}
       {error && <ThemedText style={styles.errorText}>{error}</ThemedText>}
-      <Button onPress={handleLogin} loading={isLoading}>
-        Login
-      </Button>
     </ThemedView>
   );
 }
@@ -118,5 +187,20 @@ const styles = StyleSheet.create({
     color: "red",
     textAlign: "center",
     marginBottom: 10,
+  },
+  toggleContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  toggleButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 5,
+  },
+  activeToggleButton: {
+    backgroundColor: "#ccc",
   },
 });
