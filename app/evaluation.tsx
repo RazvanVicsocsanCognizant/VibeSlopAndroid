@@ -26,6 +26,16 @@ const mockQuestions: Question[] = [
   { id: "4", question: "What are your career goals for the next five years?" },
 ];
 
+// Mock API to check evaluation status
+async function checkEvaluationStatus(): Promise<{ completed: boolean }> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // Simulate that the developer has not been evaluated yet
+      resolve({ completed: false });
+    }, 500);
+  });
+}
+
 async function fetchQuestions(): Promise<Question[]> {
   // Simulate a GET request to a mock endpoint
   return new Promise((resolve) => {
@@ -54,12 +64,20 @@ export default function EvaluationScreen() {
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isEvaluated, setIsEvaluated] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    fetchQuestions().then((data) => {
-      setQuestions(data);
-      setIsLoading(false);
+    checkEvaluationStatus().then((status) => {
+      if (status.completed) {
+        setIsEvaluated(true);
+        setIsLoading(false);
+      } else {
+        fetchQuestions().then((data) => {
+          setQuestions(data);
+          setIsLoading(false);
+        });
+      }
     });
   }, []);
 
@@ -92,7 +110,7 @@ export default function EvaluationScreen() {
 
     try {
       await submitEvaluation(answers);
-      Alert.alert("Success", "Evaluation submitted successfully!");
+      setIsEvaluated(true);
     } catch (e: any) {
       Alert.alert("Error", e.message);
     }
@@ -101,7 +119,18 @@ export default function EvaluationScreen() {
   if (isLoading) {
     return (
       <ThemedView style={styles.centered}>
-        <ThemedText>Loading questions...</ThemedText>
+        <ThemedText>Loading...</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  if (isEvaluated) {
+    return (
+      <ThemedView style={styles.centered}>
+        <ThemedText type="title">Thank You!</ThemedText>
+        <ThemedText style={styles.subtitle}>
+          Thanks for taking the time to submit the evaluation.
+        </ThemedText>
       </ThemedView>
     );
   }
@@ -144,6 +173,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    padding: 16,
+  },
+  subtitle: {
+    marginTop: 8,
+    textAlign: "center",
   },
   questionContainer: {
     marginBottom: 16,
