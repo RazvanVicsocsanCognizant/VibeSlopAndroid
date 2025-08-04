@@ -7,4 +7,6 @@ export interface Developer {
   techStack: string[];
   available: "Yes" | "No";
   project: string;
+  evaluated?: boolean;
+  evaluationResult?: string;
 }
