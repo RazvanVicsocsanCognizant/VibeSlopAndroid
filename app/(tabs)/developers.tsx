@@ -76,7 +76,7 @@ async function evaluateDevelopers(developers: Developer[]) {
 
   // Simulate a POST request to a mock endpoint
   try {
-    const response = await new Promise((resolve) =>
+    const response: { ok: boolean; json: () => Promise<any> } = await new Promise((resolve) =>
       setTimeout(() => {
         resolve({
           ok: true,
