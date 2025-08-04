@@ -1,11 +1,13 @@
 import { Image } from "expo-image";
 import { Stack, useLocalSearchParams } from "expo-router";
+import Checkbox from "expo-checkbox";
 import {
   FlatList,
   Pressable,
   StyleSheet,
   View,
   useWindowDimensions,
+  Button,
 } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -14,15 +16,32 @@ import { ThemedView } from "@/components/ThemedView";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { Developer } from "@/types";
+import { useState } from "react";
 
-function DeveloperCard({ developer }: { developer: Developer }) {
+function DeveloperCard({
+  developer,
+  onSelect,
+  isSelected,
+}: {
+  developer: Developer;
+  onSelect: (id: string) => void;
+  isSelected: boolean;
+}) {
   const colorScheme = useColorScheme();
   const cardBackgroundColor = Colors[colorScheme ?? "light"].card;
   const availabilityColor =
     developer.available === "Yes" ? "#4CAF50" : "#F44336";
 
   return (
-    <Pressable style={[styles.card, { backgroundColor: cardBackgroundColor }]}>
+    <Pressable
+      style={[styles.card, { backgroundColor: cardBackgroundColor }]}
+      onPress={() => onSelect(developer.id)}
+    >
+      <Checkbox
+        value={isSelected}
+        onValueChange={() => onSelect(developer.id)}
+        style={styles.checkbox}
+      />
       <Image source={{ uri: developer.photo }} style={styles.photo} />
       <View style={styles.infoContainer}>
         <ThemedText type="subtitle" style={styles.nameText}>
@@ -52,10 +71,39 @@ function DeveloperCard({ developer }: { developer: Developer }) {
   );
 }
 
+async function evaluateDevelopers(developers: Developer[]) {
+  console.log("Submitting developers for evaluation:", developers);
+
+  // Simulate a POST request to a mock endpoint
+  try {
+    const response = await new Promise((resolve) =>
+      setTimeout(() => {
+        resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ message: "Evaluation submitted successfully!" }),
+        });
+      }, 1000)
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to submit evaluation.");
+    }
+
+    const result = await response.json();
+    console.log("Evaluation result:", result);
+    alert(result.message);
+  } catch (error) {
+    console.error("Evaluation error:", error);
+    alert("Failed to submit evaluation. Please try again.");
+  }
+}
+
 export default function DeveloperListScreen() {
   const params = useLocalSearchParams();
   const { width } = useWindowDimensions();
   const developersString = params.developers as string;
+  const [selectedDeveloperIds, setSelectedDeveloperIds] = useState<string[]>([]);
   let developers: Developer[] = [];
 
   try {
@@ -65,6 +113,19 @@ export default function DeveloperListScreen() {
   } catch (e) {
     console.error("Failed to parse developers from params:", e);
   }
+
+  const handleSelectDeveloper = (id: string) => {
+    setSelectedDeveloperIds((prev) =>
+      prev.includes(id) ? prev.filter((devId) => devId !== id) : [...prev, id]
+    );
+  };
+
+  const handleEvaluate = () => {
+    const selectedDevelopers = developers.filter((dev) =>
+      selectedDeveloperIds.includes(dev.id)
+    );
+    evaluateDevelopers(selectedDevelopers);
+  };
 
   const numColumns = width > 768 ? 3 : 1;
 
@@ -85,9 +146,20 @@ export default function DeveloperListScreen() {
         keyExtractor={(item) => item.id}
         numColumns={numColumns}
         key={numColumns}
-        renderItem={({ item }) => <DeveloperCard developer={item} />}
+        renderItem={({ item }) => (
+          <DeveloperCard
+            developer={item}
+            onSelect={handleSelectDeveloper}
+            isSelected={selectedDeveloperIds.includes(item.id)}
+          />
+        )}
         contentContainerStyle={styles.listContentContainer}
       />
+      {selectedDeveloperIds.length > 0 && (
+        <View style={styles.evaluateButtonContainer}>
+          <Button title="Evaluate" onPress={handleEvaluate} />
+        </View>
+      )}
     </View>
   );
 }
@@ -104,6 +176,7 @@ const styles = StyleSheet.create({
   listContentContainer: {
     paddingHorizontal: 8,
     paddingTop: 16,
+    paddingBottom: 80,
   },
   card: {
     flex: 1,
@@ -153,5 +226,15 @@ const styles = StyleSheet.create({
   availabilityText: {
     fontSize: 12,
     fontWeight: "bold",
+  },
+  checkbox: {
+    marginRight: 10,
+    alignSelf: "center",
+  },
+  evaluateButtonContainer: {
+    position: "absolute",
+    bottom: 20,
+    left: 20,
+    right: 20,
   },
 });
