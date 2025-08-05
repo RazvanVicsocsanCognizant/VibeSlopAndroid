@@ -1,3 +1,4 @@
+import { Image } from "expo-image";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Developer } from "@/types";
@@ -52,8 +53,11 @@ function EvaluatedDeveloperCard({ developer }: { developer: Developer }) {
         })
       }
     >
-      <ThemedText type="subtitle">{developer.name}</ThemedText>
-      <ThemedText>{developer.evaluated ? "Passed" : "Failed"}</ThemedText>
+      <Image source={{ uri: developer.photo }} style={styles.photo} />
+      <View style={styles.infoContainer}>
+        <ThemedText type="subtitle">{developer.name}</ThemedText>
+        <ThemedText>{developer.evaluated ? "Passed" : "Failed"}</ThemedText>
+      </View>
     </Pressable>
   );
 }
@@ -100,8 +104,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   card: {
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#ccc",
+  },
+  photo: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 16,
+  },
+  infoContainer: {
+    flex: 1,
   },
 });
