@@ -8,6 +8,7 @@ import {
   View,
   useWindowDimensions,
   Button,
+  Platform,
 } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -34,7 +35,11 @@ function DeveloperCard({
 
   return (
     <Pressable
-      style={[styles.card, { backgroundColor: cardBackgroundColor }]}
+      style={[
+        styles.card,
+        { backgroundColor: cardBackgroundColor },
+        Platform.OS === "web" && styles.webCard,
+      ]}
       onPress={() => onSelect(developer.id)}
     >
       <Checkbox
@@ -191,6 +196,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+  },
+  webCard: {
+    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+    shadowColor: "transparent", // Reset native shadow
   },
   photo: {
     width: 80,
