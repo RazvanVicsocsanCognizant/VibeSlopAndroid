@@ -1,18 +1,18 @@
 import { findDevelopersBySkills } from "@/api";
+import Checkbox from "expo-checkbox";
 import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import Checkbox from "expo-checkbox";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Button,
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   View,
   useWindowDimensions,
-  Button,
-  Platform,
 } from "react-native";
-import { useEffect, useState } from "react";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -79,7 +79,7 @@ function DeveloperCard({
           </ThemedText>
         </View>
       </Pressable>
-    </View>
+    </Pressable>
   );
 }
 
@@ -88,15 +88,18 @@ async function evaluateDevelopers(developers: Developer[]) {
 
   // Simulate a POST request to a mock endpoint
   try {
-    const response: { ok: boolean; json: () => Promise<any> } = await new Promise((resolve) =>
-      setTimeout(() => {
-        resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({ message: "Evaluation submitted successfully!" }),
-        });
-      }, 1000)
-    );
+    const response: { ok: boolean; json: () => Promise<any> } =
+      await new Promise((resolve) =>
+        setTimeout(() => {
+          resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                message: "Evaluation submitted successfully!",
+              }),
+          });
+        }, 1000)
+      );
 
     if (!response.ok) {
       throw new Error("Failed to submit evaluation.");
@@ -291,5 +294,10 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 20,
     right: 20,
+  },
+  pressableContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
   },
 });
