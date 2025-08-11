@@ -10,3 +10,13 @@ export interface Developer {
   evaluated?: boolean;
   evaluationResult?: string;
 }
+
+export interface Interview {
+  id: string;
+  clientName: string;
+  feedback: string;
+}
+
+export interface DeveloperDetail extends Developer {
+  interviews: Interview[];
+}

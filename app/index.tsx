@@ -1,24 +1,12 @@
-import { Button } from "@/components/ui/Button";
+import { loginApi, saveToken } from "@/api";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { Button } from "@/components/ui/Button";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
-import { StyleSheet, TextInput, View, Pressable } from "react-native";
-
-// Mock authentication function. Replace this with your actual API call.
-const mockLoginApi = (user: string, pass: string) => {
-  return new Promise<void>((resolve, reject) => {
-    setTimeout(() => {
-      if (user && pass) {
-        resolve();
-      } else {
-        reject(new Error("Invalid username or password"));
-      }
-    }, 1000);
-  });
-};
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
 
 const mockDeveloperLoginApi = (developerId: string) => {
   return new Promise<void>((resolve, reject) => {
@@ -48,7 +36,8 @@ export default function LoginScreen() {
     setIsLoading(true);
     setError(null);
     try {
-      await mockLoginApi(username, password);
+      const response = await loginApi({ username, password });
+      await saveToken(response.token);
       router.replace("/(tabs)/home");
     } catch (e: any) {
       setError(e.message);
@@ -137,7 +126,11 @@ export default function LoginScreen() {
             returnKeyType="done"
             onSubmitEditing={handleLogin}
           />
-          <Button onPress={handleLogin} loading={isLoading}>
+          <Button
+            onPress={handleLogin}
+            loading={isLoading}
+            disabled={!username || !password}
+          >
             Login
           </Button>
         </>
@@ -155,10 +148,21 @@ export default function LoginScreen() {
             returnKeyType="done"
             onSubmitEditing={handleDeveloperLogin}
           />
-          <Button onPress={handleDeveloperLogin} loading={isLoading}>
+          <Button
+            onPress={handleDeveloperLogin}
+            loading={isLoading}
+            disabled={!developerId}
+          >
             Login as Developer
           </Button>
         </>
+      )}
+      {loginMode === "user" && (
+        <Pressable onPress={() => router.push("/register")}>
+          <ThemedText style={styles.registerText}>
+            Don't have an account? Register
+          </ThemedText>
+        </Pressable>
       )}
       {error && <ThemedText style={styles.errorText}>{error}</ThemedText>}
     </ThemedView>
@@ -202,5 +206,10 @@ const styles = StyleSheet.create({
   },
   activeToggleButton: {
     backgroundColor: "#ccc",
+  },
+  registerText: {
+    textAlign: "center",
+    marginTop: 16,
+    color: Colors.light.tint,
   },
 });

@@ -2,8 +2,8 @@ import { Tabs } from "expo-router";
 import React from "react";
 import { Platform } from "react-native";
 
-import { HeaderMenu } from "@/components/HeaderMenu";
 import { HapticTab } from "@/components/HapticTab";
+import { HeaderMenu } from "@/components/HeaderMenu";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
@@ -52,7 +52,11 @@ export default function TabLayout() {
         options={{
           title: "Evaluated",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="person.crop.circle.badge.checkmark" color={color} />
+            <IconSymbol
+              size={28}
+              name="person.crop.circle.badge.checkmark"
+              color={color}
+            />
           ),
         }}
       />

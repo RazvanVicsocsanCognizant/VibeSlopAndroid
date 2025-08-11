@@ -1,7 +1,8 @@
+import { deleteToken } from "@/api";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Modal, Pressable, StyleSheet, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/Colors";
@@ -15,7 +16,16 @@ export function HeaderMenu() {
 
   const handleLogout = () => {
     setMenuVisible(false);
-    router.replace("/");
+    // Add a confirmation dialog to prevent accidental log-outs.
+    console.log("Logging out...");
+
+    try {
+      deleteToken();
+      router.replace("/");
+    } catch (error) {
+      console.error("Failed to log out:", error);
+      Alert.alert("Logout Failed", "Could not log out. Please try again.");
+    }
   };
 
   const menuContainerStyle = {
@@ -48,11 +58,11 @@ export function HeaderMenu() {
         onRequestClose={() => setMenuVisible(false)}
       >
         <Pressable style={styles.overlay} onPress={() => setMenuVisible(false)}>
-          <View style={[styles.menuContainer, menuContainerStyle]}>
+          <Pressable style={[styles.menuContainer, menuContainerStyle]}>
             <Pressable onPress={handleLogout} style={styles.menuItem}>
               <Text style={menuItemTextStyle}>Log out</Text>
             </Pressable>
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </>

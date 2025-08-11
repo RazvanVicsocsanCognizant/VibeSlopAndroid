@@ -1,7 +1,9 @@
+import { findDevelopersBySkills } from "@/api";
 import { Image } from "expo-image";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import Checkbox from "expo-checkbox";
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -10,14 +12,13 @@ import {
   Button,
   Platform,
 } from "react-native";
+import { useEffect, useState } from "react";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { Developer } from "@/types";
-import { useState } from "react";
 
 function DeveloperCard({
   developer,
@@ -28,6 +29,7 @@ function DeveloperCard({
   onSelect: (id: string) => void;
   isSelected: boolean;
 }) {
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const cardBackgroundColor = Colors[colorScheme ?? "light"].card;
   const availabilityColor =
@@ -47,32 +49,37 @@ function DeveloperCard({
         onValueChange={() => onSelect(developer.id)}
         style={styles.checkbox}
       />
-      <Image source={{ uri: developer.photo }} style={styles.photo} />
-      <View style={styles.infoContainer}>
-        <ThemedText type="subtitle" style={styles.nameText}>
-          Name: {developer.name}
-        </ThemedText>
-        <ThemedText style={styles.locationText}>
-          Location: {developer.location}
-        </ThemedText>
-        <ThemedText style={styles.experienceText}>
-          Experience: {developer.yearsOfExperience} yrs
-        </ThemedText>
-        <ThemedText style={styles.techStackText}>
-          Tech Stack: {developer.techStack.join(", ")}
-        </ThemedText>
-        {!!developer.project && (
-          <ThemedText style={styles.projectText}>
-            Project: {developer.project}
+      <Pressable
+        style={styles.pressableContent}
+        onPress={() => router.push(`/developer/${developer.id}`)}
+      >
+        <Image source={{ uri: developer.photo }} style={styles.photo} />
+        <View style={styles.infoContainer}>
+          <ThemedText type="subtitle" style={styles.nameText}>
+            Name: {developer.name}
           </ThemedText>
-        )}
-        <ThemedText
-          style={[styles.availabilityText, { color: availabilityColor }]}
-        >
-          Available: {developer.available}
-        </ThemedText>
-      </View>
-    </Pressable>
+          <ThemedText style={styles.locationText}>
+            Location: {developer.location}
+          </ThemedText>
+          <ThemedText style={styles.experienceText}>
+            Experience: {developer.yearsOfExperience} yrs
+          </ThemedText>
+          <ThemedText style={styles.techStackText}>
+            Tech Stack: {developer.techStack.join(", ")}
+          </ThemedText>
+          {!!developer.project && (
+            <ThemedText style={styles.projectText}>
+              Project: {developer.project}
+            </ThemedText>
+          )}
+          <ThemedText
+            style={[styles.availabilityText, { color: availabilityColor }]}
+          >
+            Available: {developer.available}
+          </ThemedText>
+        </View>
+      </Pressable>
+    </View>
   );
 }
 
@@ -108,15 +115,55 @@ export default function DeveloperListScreen() {
   const params = useLocalSearchParams();
   const { width } = useWindowDimensions();
   const developersString = params.developers as string;
-  const [selectedDeveloperIds, setSelectedDeveloperIds] = useState<string[]>([]);
-  let developers: Developer[] = [];
+  const [developers, setDevelopers] = useState<Developer[]>([]);
+  const [selectedDeveloperIds, setSelectedDeveloperIds] = useState<string[]>(
+    []
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  try {
+  useEffect(() => {
+    setIsLoading(true);
+    setError(null);
     if (developersString) {
-      developers = JSON.parse(developersString);
+      try {
+        setDevelopers(JSON.parse(developersString));
+        setIsLoading(false);
+      } catch (e) {
+        console.error("Failed to parse developers from params:", e);
+        setError("Failed to load developer data.");
+        setIsLoading(false);
+      }
+    } else {
+      findDevelopersBySkills("")
+        .then(setDevelopers)
+        .catch((err) => {
+          console.error("Failed to fetch developers:", err);
+          setError(
+            err.message || "An error occurred while fetching developers."
+          );
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     }
-  } catch (e) {
-    console.error("Failed to parse developers from params:", e);
+  }, [developersString]);
+
+  if (isLoading) {
+    return (
+      <ThemedView style={styles.centered}>
+        <ActivityIndicator size="large" />
+      </ThemedView>
+    );
+  }
+
+  if (error) {
+    return (
+      <ThemedView style={styles.centered}>
+        <ThemedText type="subtitle">Error</ThemedText>
+        <ThemedText>{error}</ThemedText>
+      </ThemedView>
+    );
   }
 
   const handleSelectDeveloper = (id: string) => {
@@ -186,7 +233,6 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     flexDirection: "row",
-    alignItems: "flex-start",
     marginVertical: 8,
     marginHorizontal: 8,
     padding: 12,
