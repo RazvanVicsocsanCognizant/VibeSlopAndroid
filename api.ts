@@ -1,4 +1,4 @@
-import { Developer, DeveloperDetail, Interview } from "@/types";
+import { Developer, DeveloperDetail, Interview, Question } from "@/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
@@ -198,7 +198,7 @@ export const findDevelopersBySkills = async (
   //     skillsQuery
   //   )}&match=any`;
 
-  const url = `${API_BASE_URL}/api/v1/developers?skills=Java,React&match=any`;
+  const url = `${API_BASE_URL}/api/v1/developers/all`;
 
   const headers = {
     "Content-Type": "application/json",
@@ -256,4 +256,147 @@ export const getDeveloperById = async (
   }
 
   return mapApiDeveloperToDeveloperDetail(responseBody);
+};
+
+export const generateInterviewQuestions = async (
+  technologies: string[]
+): Promise<Question[]> => {
+  const token = await getToken();
+  if (!token) {
+    throw new Error("Authentication token not found. Please log in again.");
+  }
+
+  const url = `${API_BASE_URL}/api/v1/interviews/generate-questions`;
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  const body = JSON.stringify({ technologies });
+
+  console.log("--- API Request: Generate Questions ---");
+  console.log("URL:", url);
+  console.log("Headers:", headers);
+  console.log("Body:", body);
+
+  const response = await fetch(url, { method: "POST", headers, body });
+  const responseBody = await response.json();
+
+  console.log("--- API Response: Generate Questions ---");
+  console.log("Status:", response.status);
+  console.log("Body:", responseBody);
+
+  if (!response.ok) {
+    throw new Error(responseBody.message || "Failed to generate questions.");
+  }
+
+  console.log("Type of questions:", typeof responseBody.questions);
+
+  // The API is expected to return an array of question objects.
+  // We map them to the Question type used by the evaluation screen.
+  const apiQuestions: { question: string }[] = responseBody.questions;
+
+  const questionsJsonObject = JSON.parse(responseBody.questions);
+
+  const questions = questionsJsonObject.map(
+    (q: { question: string }, index: number) => ({
+      id: (index + 1).toString(),
+      question: q.question,
+    })
+  );
+
+  return questions;
+};
+
+export const generateFeedback = async (
+  questions: Question[],
+  answers: { [key: string]: string }
+): Promise<string> => {
+  const token = await getToken();
+  if (!token) {
+    throw new Error("Authentication token not found. Please log in again.");
+  }
+
+  const interviewTranscript = questions
+    .map(
+      (q) => `Question: ${q.question} Answer: ${answers[q.id]?.trim() || ""}`
+    )
+    .join(" \n ");
+
+  const url = `${API_BASE_URL}/api/v1/interviews/generate-feedback`;
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  const body = JSON.stringify({ interviewTranscript });
+
+  console.log("--- API Request: Generate Feedback ---");
+  console.log("URL:", url);
+  console.log("Headers:", headers);
+  console.log("Body:", body);
+
+  const response = await fetch(url, { method: "POST", headers, body });
+  // Try to parse the response as JSON. It might be null if body is empty or not valid JSON.
+  const responseBody = await response.json().catch(() => null);
+
+  console.log("--- API Response: Generate Feedback ---");
+  console.log("Status:", response.status);
+  console.log("Body:", responseBody);
+
+  if (!response.ok) {
+    throw new Error(
+      (responseBody as any)?.message ||
+        "An error occurred while submitting the evaluation."
+    );
+  }
+
+  if (typeof (responseBody as any)?.feedback !== "string") {
+    throw new Error("Invalid feedback response from the server.");
+  }
+
+  return (responseBody as any).feedback;
+};
+
+export const createInterview = async (
+  developerId: string,
+  feedback: string
+): Promise<void> => {
+  const token = await getToken();
+  if (!token) {
+    throw new Error("Authentication token not found. Please log in again.");
+  }
+
+  // As per the API spec, a clientId is required.
+  // The source for this ID is not clear from the current context.
+  // I am using a hardcoded value of 2 based on the example in the documentation.
+  // This should be replaced with the actual logged-in user's ID when available.
+  const clientId = 2;
+
+  const url = `${API_BASE_URL}/api/v1/interviews`;
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  const body = JSON.stringify({
+    developerId: parseInt(developerId, 10),
+    clientId,
+    feedback,
+  });
+
+  console.log("--- API Request: Create Interview ---");
+  console.log("URL:", url);
+  console.log("Headers:", headers);
+  console.log("Body:", body);
+
+  const response = await fetch(url, { method: "POST", headers, body });
+
+  console.log("--- API Response: Create Interview ---");
+  console.log("Status:", response.status);
+
+  if (!response.ok) {
+    const responseBody = await response.json().catch(() => ({}));
+    console.log("Body:", responseBody);
+    throw new Error(
+      (responseBody as any)?.message || "Failed to create interview record."
+    );
+  }
 };

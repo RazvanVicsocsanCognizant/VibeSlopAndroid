@@ -1,6 +1,10 @@
+import { createInterview, generateFeedback } from "@/api";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { Stack } from "expo-router";
+import { Colors } from "@/constants/Colors";
+import { useColorScheme } from "@/hooks/useColorScheme";
+import { Question } from "@/types";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   StyleSheet,
@@ -10,76 +14,49 @@ import {
   View,
   Alert,
 } from "react-native";
-
-interface Question {
-  id: string;
-  question: string;
-}
-
-const mockQuestions: Question[] = [
-  { id: "1", question: "What are your primary technical skills?" },
-  { id: "2", question: "Describe a challenging project you've worked on." },
-  {
-    id: "3",
-    question: "How do you stay updated with the latest industry trends?",
-  },
-  { id: "4", question: "What are your career goals for the next five years?" },
-];
-
-// Mock API to check evaluation status
-async function checkEvaluationStatus(): Promise<{ completed: boolean }> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Simulate that the developer has not been evaluated yet
-      resolve({ completed: false });
-    }, 500);
-  });
-}
-
-async function fetchQuestions(): Promise<Question[]> {
-  // Simulate a GET request to a mock endpoint
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(mockQuestions);
-    }, 1000);
-  });
-}
-
-async function submitEvaluation(answers: { [key: string]: string }) {
-  console.log("Submitting evaluation:", answers);
-  // Simulate a POST request to a mock endpoint
-  return new Promise<void>((resolve, reject) => {
-    setTimeout(() => {
-      if (Object.values(answers).every((answer) => answer.trim() !== "")) {
-        resolve();
-      } else {
-        reject(new Error("Please answer all questions."));
-      }
-    }, 1000);
-  });
-}
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function EvaluationScreen() {
+  const params = useLocalSearchParams();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEvaluated, setIsEvaluated] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [generatedFeedback, setGeneratedFeedback] = useState<string | null>(
+    null
+  );
+  const [isReturning, setIsReturning] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const colorScheme = useColorScheme();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    checkEvaluationStatus().then((status) => {
-      if (status.completed) {
-        setIsEvaluated(true);
+    const questionsParam = params.questions as string;
+    setIsLoading(true);
+    setError(null);
+    if (questionsParam) {
+      try {
+        const parsedQuestions = JSON.parse(questionsParam);
+        if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+          setQuestions(parsedQuestions);
+        } else {
+          setError("No questions were provided for the evaluation.");
+        }
+      } catch (e) {
+        console.error("Failed to parse questions from params:", e);
+        setError("Could not load questions. The data format is incorrect.");
+      } finally {
         setIsLoading(false);
-      } else {
-        fetchQuestions().then((data) => {
-          setQuestions(data);
-          setIsLoading(false);
-        });
       }
-    });
-  }, []);
+    } else {
+      setError("No questions were provided for the evaluation.");
+      setIsLoading(false);
+    }
+  }, [params.questions]);
 
   const handleAnswerChange = (id: string, text: string) => {
     setAnswers((prev) => ({ ...prev, [id]: text }));
@@ -89,6 +66,8 @@ export default function EvaluationScreen() {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+
     const newErrors: { [key: string]: boolean } = {};
     let firstErrorIndex = -1;
 
@@ -108,11 +87,41 @@ export default function EvaluationScreen() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
-      await submitEvaluation(answers);
+      const feedback = await generateFeedback(questions, answers);
+      setGeneratedFeedback(feedback);
       setIsEvaluated(true);
     } catch (e: any) {
       Alert.alert("Error", e.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReturn = async () => {
+    if (isReturning || !generatedFeedback) return;
+
+    const developerId = params.developerId as string;
+    if (!developerId) {
+      Alert.alert("Error", "Developer ID is missing. Cannot save interview.", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
+      return;
+    }
+
+    setIsReturning(true);
+    try {
+      await createInterview(developerId, generatedFeedback);
+      router.back();
+    } catch (e: any) {
+      Alert.alert(
+        "Save Failed",
+        `Could not save the interview record. ${e.message}`,
+        [{ text: "OK", onPress: () => router.back() }]
+      );
+    } finally {
+      setIsReturning(false);
     }
   };
 
@@ -124,6 +133,15 @@ export default function EvaluationScreen() {
     );
   }
 
+  if (error) {
+    return (
+      <ThemedView style={styles.centered}>
+        <ThemedText type="subtitle">Error</ThemedText>
+        <ThemedText style={styles.subtitle}>{error}</ThemedText>
+      </ThemedView>
+    );
+  }
+
   if (isEvaluated) {
     return (
       <ThemedView style={styles.centered}>
@@ -131,9 +149,23 @@ export default function EvaluationScreen() {
         <ThemedText style={styles.subtitle}>
           Thanks for taking the time to submit the evaluation.
         </ThemedText>
+        <View
+          style={[styles.returnButtonContainer, { bottom: insets.bottom + 20 }]}
+        >
+          <Button
+            title={isReturning ? "Saving..." : "Return"}
+            onPress={handleReturn}
+            disabled={isReturning}
+          />
+        </View>
       </ThemedView>
     );
   }
+
+  const textInputStyle = {
+    borderColor: Colors[colorScheme ?? "light"].icon,
+    color: Colors[colorScheme ?? "light"].text,
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -148,16 +180,22 @@ export default function EvaluationScreen() {
             <TextInput
               style={[
                 styles.input,
+                textInputStyle,
                 errors[item.id] && styles.errorInput,
               ]}
               value={answers[item.id] || ""}
               onChangeText={(text) => handleAnswerChange(item.id, text)}
               placeholder="Your answer"
+              placeholderTextColor={Colors[colorScheme ?? "light"].icon}
             />
           </View>
         )}
         ListFooterComponent={
-          <Button title="Submit Evaluation" onPress={handleSubmit} />
+          <Button
+            title={isSubmitting ? "Submitting..." : "Submit Evaluation"}
+            onPress={handleSubmit}
+            disabled={isSubmitting}
+          />
         }
       />
     </ThemedView>
@@ -184,12 +222,16 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
     padding: 8,
     marginTop: 8,
     borderRadius: 4,
   },
   errorInput: {
     borderColor: "red",
+  },
+  returnButtonContainer: {
+    position: "absolute",
+    left: 16,
+    right: 16,
   },
 });

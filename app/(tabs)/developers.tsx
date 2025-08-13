@@ -1,11 +1,17 @@
-import { findDevelopersBySkills } from "@/api";
+import { findDevelopersBySkills, generateInterviewQuestions } from "@/api";
+import { Button } from "@/components/ui/Button";
 import Checkbox from "expo-checkbox";
 import { Image } from "expo-image";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import {
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter,
+} from "expo-router";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Button,
+  Alert,
   FlatList,
   Platform,
   Pressable,
@@ -49,10 +55,7 @@ function DeveloperCard({
         onValueChange={() => onSelect(developer.id)}
         style={styles.checkbox}
       />
-      <Pressable
-        style={styles.pressableContent}
-        onPress={() => router.push(`/developer/${developer.id}`)}
-      >
+      <View style={styles.pressableContent}>
         <Image source={{ uri: developer.photo }} style={styles.photo} />
         <View style={styles.infoContainer}>
           <ThemedText type="subtitle" style={styles.nameText}>
@@ -78,79 +81,51 @@ function DeveloperCard({
             Available: {developer.available}
           </ThemedText>
         </View>
-      </Pressable>
+      </View>
     </Pressable>
   );
-}
-
-async function evaluateDevelopers(developers: Developer[]) {
-  console.log("Submitting developers for evaluation:", developers);
-
-  // Simulate a POST request to a mock endpoint
-  try {
-    const response: { ok: boolean; json: () => Promise<any> } =
-      await new Promise((resolve) =>
-        setTimeout(() => {
-          resolve({
-            ok: true,
-            json: () =>
-              Promise.resolve({
-                message: "Evaluation submitted successfully!",
-              }),
-          });
-        }, 1000)
-      );
-
-    if (!response.ok) {
-      throw new Error("Failed to submit evaluation.");
-    }
-
-    const result = await response.json();
-    console.log("Evaluation result:", result);
-    alert(result.message);
-  } catch (error) {
-    console.error("Evaluation error:", error);
-    alert("Failed to submit evaluation. Please try again.");
-  }
 }
 
 export default function DeveloperListScreen() {
   const params = useLocalSearchParams();
   const { width } = useWindowDimensions();
-  const developersString = params.developers as string;
+  const skills = (params.skills as string) || "";
+  const router = useRouter();
   const [developers, setDevelopers] = useState<Developer[]>([]);
-  const [selectedDeveloperIds, setSelectedDeveloperIds] = useState<string[]>(
-    []
+  const [selectedDeveloperId, setSelectedDeveloperId] = useState<string | null>(
+    null
   );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEvaluating, setIsEvaluating] = useState(false);
 
-  useEffect(() => {
-    setIsLoading(true);
-    setError(null);
-    if (developersString) {
-      try {
-        setDevelopers(JSON.parse(developersString));
-        setIsLoading(false);
-      } catch (e) {
-        console.error("Failed to parse developers from params:", e);
-        setError("Failed to load developer data.");
-        setIsLoading(false);
-      }
-    } else {
-      findDevelopersBySkills("")
-        .then(setDevelopers)
-        .catch((err) => {
-          console.error("Failed to fetch developers:", err);
-          setError(
-            err.message || "An error occurred while fetching developers."
-          );
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    }
-  }, [developersString]);
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      const fetchDevelopers = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+          const result = await findDevelopersBySkills(skills);
+          if (isActive) {
+            setDevelopers(result);
+          }
+        } catch (err: any) {
+          if (isActive) {
+            setError(
+              err.message || "An error occurred while fetching developers."
+            );
+          }
+        } finally {
+          if (isActive) setIsLoading(false);
+        }
+      };
+      fetchDevelopers();
+      return () => {
+        isActive = false;
+      };
+    }, [skills])
+  );
 
   if (isLoading) {
     return (
@@ -170,16 +145,46 @@ export default function DeveloperListScreen() {
   }
 
   const handleSelectDeveloper = (id: string) => {
-    setSelectedDeveloperIds((prev) =>
-      prev.includes(id) ? prev.filter((devId) => devId !== id) : [...prev, id]
-    );
+    setSelectedDeveloperId((currentSelectedId) => {
+      // If the developer clicked is the one already selected, we deselect it by returning null.
+      if (currentSelectedId === id) {
+        return null;
+      }
+      // Otherwise, we select the new developer by returning their id.
+      return id;
+    });
   };
 
-  const handleEvaluate = () => {
-    const selectedDevelopers = developers.filter((dev) =>
-      selectedDeveloperIds.includes(dev.id)
+  const handleEvaluate = async () => {
+    if (!selectedDeveloperId || isEvaluating) return;
+
+    const selectedDeveloper = developers.find(
+      (dev) => dev.id === selectedDeveloperId
     );
-    evaluateDevelopers(selectedDevelopers);
+
+    if (!selectedDeveloper) {
+      Alert.alert("Error", "Selected developer not found.");
+      return;
+    }
+
+    setIsEvaluating(true);
+    try {
+      const questions = await generateInterviewQuestions(
+        selectedDeveloper.techStack
+      );
+      console.log("Generated questions:", questions);
+      router.push({
+        pathname: "/evaluation",
+        params: {
+          questions: JSON.stringify(questions),
+          developerId: selectedDeveloperId,
+        },
+      });
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Could not generate questions.");
+    } finally {
+      setIsEvaluating(false);
+    }
   };
 
   const numColumns = width > 768 ? 3 : 1;
@@ -194,7 +199,7 @@ export default function DeveloperListScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ThemedView style={styles.container}>
       <Stack.Screen options={{ title: "Available Developers" }} />
       <FlatList
         data={developers}
@@ -205,17 +210,19 @@ export default function DeveloperListScreen() {
           <DeveloperCard
             developer={item}
             onSelect={handleSelectDeveloper}
-            isSelected={selectedDeveloperIds.includes(item.id)}
+            isSelected={selectedDeveloperId === item.id}
           />
         )}
         contentContainerStyle={styles.listContentContainer}
       />
-      {selectedDeveloperIds.length > 0 && (
+      {selectedDeveloperId && (
         <View style={styles.evaluateButtonContainer}>
-          <Button title="Evaluate" onPress={handleEvaluate} />
+          <Button onPress={handleEvaluate} loading={isEvaluating}>
+            Evaluate
+          </Button>
         </View>
       )}
-    </View>
+    </ThemedView>
   );
 }
 
@@ -288,6 +295,7 @@ const styles = StyleSheet.create({
   checkbox: {
     marginRight: 10,
     alignSelf: "center",
+    borderRadius: 99, // Make it look like a radio button for single selection
   },
   evaluateButtonContainer: {
     position: "absolute",

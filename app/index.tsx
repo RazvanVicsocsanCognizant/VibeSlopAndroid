@@ -38,7 +38,7 @@ export default function LoginScreen() {
     try {
       const response = await loginApi({ username, password });
       await saveToken(response.token);
-      router.replace("/(tabs)/home");
+      router.replace("/(tabs)/explore");
     } catch (e: any) {
       setError(e.message);
     } finally {

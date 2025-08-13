@@ -25,7 +25,7 @@ export default function RegisterScreen() {
       const response = await registerApi({ username, password });
       await saveToken(response.token);
       // Replace to home so user can't go back to register page
-      router.replace("/(tabs)/home");
+      router.replace("/(tabs)/explore");
     } catch (e: any) {
       setError(e.message);
     } finally {

@@ -1,9 +1,7 @@
-import { findDevelopersBySkills } from "@/api";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -28,7 +26,6 @@ export default function ExploreScreen() {
   const colorScheme = useColorScheme();
   const [description, setDescription] = useState("");
   const [technologies, setTechnologies] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const textInputStyle = {
@@ -45,30 +42,17 @@ export default function ExploreScreen() {
 
   const animatedButtonStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ scale: withSpring(isLoading ? 0.95 : scale.value) }],
-      opacity: isLoading ? 0.7 : 1,
+      transform: [{ scale: withSpring(scale.value) }],
     };
   });
 
-  const handleSubmit = async () => {
-    if (isLoading) return;
-    setIsLoading(true);
-    try {
-      // The API uses the 'technologies' field to find developers by skills.
-      const developers = await findDevelopersBySkills(technologies);
-      router.push({
-        pathname: "/developers",
-        params: { developers: JSON.stringify(developers) },
-      });
-      setDescription("");
-      setTechnologies("");
-    } catch (error) {
-      console.error("Failed to find developers:", error);
-      // Optionally, show an alert to the user
-      Alert.alert("Error", (error as Error).message);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSubmit = () => {
+    router.push({
+      pathname: "/developers",
+      params: { skills: technologies },
+    });
+    setDescription("");
+    setTechnologies("");
   };
 
   return (
@@ -109,18 +93,13 @@ export default function ExploreScreen() {
           { bottom: insets.bottom + 20 },
           animatedButtonStyle,
         ]}
-        disabled={isLoading}
-        onPressIn={() => (scale.value = withSpring(0.95))}
+        onPressIn={() => (scale.value = 0.95)}
         onPress={handleSubmit}
-        onPressOut={() => (scale.value = withSpring(1))}
-        onHoverIn={() => (scale.value = withSpring(1.05))}
-        onHoverOut={() => (scale.value = withSpring(1))}
+        onPressOut={() => (scale.value = 1)}
+        onHoverIn={() => (scale.value = 1.05)}
+        onHoverOut={() => (scale.value = 1)}
       >
-        {isLoading ? (
-          <ActivityIndicator color="black" />
-        ) : (
-          <ThemedText style={styles.buttonText}>Submit</ThemedText>
-        )}
+        <ThemedText style={styles.buttonText}>Submit</ThemedText>
       </AnimatedPressable>
     </ThemedView>
   );

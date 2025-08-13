@@ -65,13 +65,7 @@ function InterviewCard({ interview }: { interview: InterviewWithDeveloper }) {
         <ThemedText type="subtitle">
           {`${interview.clientName} - ${interview.developerName}`}
         </ThemedText>
-        <ThemedText
-          style={styles.feedback}
-          numberOfLines={1}
-          ellipsizeMode="tail"
-        >
-          "{interview.feedback}"
-        </ThemedText>
+        <ThemedText style={styles.feedback}>"{interview.feedback}"</ThemedText>
       </View>
     </Pressable>
   );

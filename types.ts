@@ -20,3 +20,8 @@ export interface Interview {
 export interface DeveloperDetail extends Developer {
   interviews: Interview[];
 }
+
+export interface Question {
+  id: string;
+  question: string;
+}
