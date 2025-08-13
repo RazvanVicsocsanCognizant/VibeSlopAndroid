@@ -108,7 +108,6 @@ export default function EvaluatedScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ title: "Interview History" }} />
       <FlatList
         data={interviews}
         keyExtractor={(item) => `${item.developerId}-${item.id}`}
